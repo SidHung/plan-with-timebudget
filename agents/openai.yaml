@@ -1,0 +1,7 @@
+interface:
+  display_name: "Plan with TimeBudget"
+  short_description: "Plan a realistic day within finite capacity"
+  brand_color: "#0789F8"
+  default_prompt: "Use $plan-with-timebudget to plan what realistically fits today and create portable JSON plus an interactive offline page."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,13 @@
+{
+  "format": "timebudget-defaults",
+  "schema_version": "1.0.0",
+  "timezone": "Asia/Taipei",
+  "planning_start": "09:00",
+  "planning_end": "18:00",
+  "buffer": {
+    "mode": "recommended",
+    "minutes": null
+  },
+  "default_break_minutes": 15,
+  "default_task_priority": "should"
+}

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>TimeBudget daily plan</title>
+  <style>/*__TIMEBUDGET_STYLES__*/</style>
+</head>
+<body>
+  <noscript>__TIMEBUDGET_STATIC_FALLBACK__</noscript>
+  <div id="app" class="app-shell">
+    <header class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">TIMEBUDGET · DAILY PLAN</p>
+        <h1 id="page-title">Plan for <span id="plan-date"></span></h1>
+        <p id="plan-window" class="window"></p>
+      </div>
+      <div id="status-badge" class="status-badge" role="status"></div>
+    </header>
+
+    <div id="conflict-panel" class="notice conflict" hidden>
+      <div>
+        <strong>Two versions need your choice</strong>
+        <p>The embedded plan and browser cache have the same revision but different plan content.</p>
+      </div>
+      <div class="button-row">
+        <button id="choose-embedded" type="button" class="button secondary">Use embedded plan</button>
+        <button id="choose-cached" type="button" class="button primary">Use cached plan</button>
+      </div>
+    </div>
+
+    <main>
+      <section aria-labelledby="capacity-heading">
+        <div class="section-heading">
+          <div><p class="kicker">CAPACITY</p><h2 id="capacity-heading">What still fits</h2></div>
+          <p id="capacity-message" class="section-note"></p>
+        </div>
+        <div id="capacity-grid" class="capacity-grid"></div>
+      </section>
+
+      <section aria-labelledby="tasks-heading">
+        <div class="section-heading">
+          <div><p class="kicker">FOCUS</p><h2 id="tasks-heading">Today's tasks</h2></div>
+          <p class="section-note">Completion updates this working copy. Export JSON before switching browsers or agent sessions.</p>
+        </div>
+        <div id="task-groups" class="task-groups"></div>
+      </section>
+
+      <section aria-labelledby="reserves-heading">
+        <div class="section-heading">
+          <div><p class="kicker">PROTECTED TIME</p><h2 id="reserves-heading">Reserves</h2></div>
+        </div>
+        <div id="reserves-list" class="reserve-grid"></div>
+      </section>
+
+      <section aria-labelledby="settings-heading">
+        <div class="section-heading">
+          <div><p class="kicker">REUSE</p><h2 id="settings-heading">Settings and defaults</h2></div>
+          <p class="section-note">Defaults are local conveniences until you export them.</p>
+        </div>
+        <div class="settings-layout">
+          <article class="panel">
+            <h3>Current plan settings</h3>
+            <dl id="current-settings" class="definition-list"></dl>
+          </article>
+          <form id="defaults-form" class="panel settings-form">
+            <h3>Reusable defaults</h3>
+            <div class="field-pair">
+              <label>Planning start<input id="default-start" type="time" required></label>
+              <label>Planning end<input id="default-end" type="time" required></label>
+            </div>
+            <label class="checkbox-line"><input id="save-timezone" type="checkbox"> Save timezone with defaults</label>
+            <label>Timezone<input id="default-timezone" type="text" autocomplete="off" spellcheck="false"></label>
+            <div class="field-pair">
+              <label>Buffer mode<select id="default-buffer-mode"><option value="recommended">Recommended</option><option value="fixed">Fixed</option></select></label>
+              <label>Fixed buffer minutes<input id="default-buffer-minutes" type="number" min="0" max="1440" step="1"></label>
+            </div>
+            <div class="field-pair">
+              <label>Default break minutes<input id="default-break" type="number" min="0" max="1440" step="1" required></label>
+              <label>Default task priority<select id="default-priority"><option value="must">Must</option><option value="should">Should</option><option value="could">Could</option></select></label>
+            </div>
+            <div class="button-row">
+              <button type="submit" class="button secondary">Save defaults</button>
+              <button id="export-defaults" type="button" class="button secondary">Export defaults</button>
+              <label class="button secondary file-button">Import defaults<input id="import-defaults" type="file" accept="application/json,.json"></label>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="export-panel" aria-labelledby="export-heading">
+        <div><p class="kicker">PORTABLE STATE</p><h2 id="export-heading">Keep your plan</h2><p>Browser storage is only a convenience cache. Export JSON to continue elsewhere.</p></div>
+        <div class="button-row">
+          <button id="export-plan" type="button" class="button primary">Export updated plan</button>
+          <button id="reset-plan" type="button" class="button danger">Reset to embedded plan</button>
+        </div>
+      </section>
+
+      <details class="advanced">
+        <summary>Advanced metadata and raw JSON</summary>
+        <dl id="advanced-meta" class="definition-list"></dl>
+        <pre id="raw-json" tabindex="0"></pre>
+      </details>
+    </main>
+  </div>
+  <div id="live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <script id="embedded-plan" type="application/json">__TIMEBUDGET_PLAN__</script>
+  <script id="embedded-defaults" type="application/json">__TIMEBUDGET_DEFAULTS__</script>
+  <script>/*__TIMEBUDGET_APP__*/</script>
+</body>
+</html>

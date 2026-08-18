@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TimeBudget Reusable Defaults",
+  "description": "Portable reusable defaults for TimeBudget planning.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "schema_version",
+    "timezone",
+    "planning_start",
+    "planning_end",
+    "buffer",
+    "default_break_minutes",
+    "default_task_priority"
+  ],
+  "properties": {
+    "format": { "const": "timebudget-defaults" },
+    "schema_version": { "const": "1.0.0" },
+    "timezone": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z0-9._+-]+(?:/[A-Za-z0-9._+-]+)+$"
+        },
+        { "type": "null" }
+      ]
+    },
+    "planning_start": {
+      "type": "string",
+      "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "planning_end": {
+      "type": "string",
+      "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "buffer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "minutes"],
+      "properties": {
+        "mode": { "enum": ["recommended", "fixed"] },
+        "minutes": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0, "maximum": 1440 },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "mode": { "const": "recommended" } },
+            "required": ["mode"]
+          },
+          "then": { "properties": { "minutes": { "type": "null" } } },
+          "else": { "properties": { "minutes": { "type": "integer" } } }
+        }
+      ]
+    },
+    "default_break_minutes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1440
+    },
+    "default_task_priority": { "enum": ["must", "should", "could"] }
+  }
+}
