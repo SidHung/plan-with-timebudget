@@ -12,6 +12,8 @@ SCHEMA_PATH = ROOT / "references" / "portable-plan.schema.json"
 DEFAULTS_SCHEMA_PATH = ROOT / "references" / "defaults.schema.json"
 FIXTURE_PATH = ROOT / "tests" / "fixtures" / "valid-plan.timebudget.json"
 DEFAULTS_FIXTURE_PATH = ROOT / "tests" / "fixtures" / "valid-defaults.json"
+SKILL_PATH = ROOT / "SKILL.md"
+WORKFLOW_PATH = ROOT / "references" / "workflow.md"
 
 spec = importlib.util.spec_from_file_location("timebudget_validator", VALIDATOR_PATH)
 validator = importlib.util.module_from_spec(spec)
@@ -27,6 +29,14 @@ class TimeBudgetContractTests(unittest.TestCase):
         plan = copy.deepcopy(self.valid)
         mutation(plan)
         return validator.validate_plan(plan)
+
+    def test_default_planning_route_stays_lean(self):
+        skill = SKILL_PATH.read_text(encoding="utf-8")
+        workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+        basic = workflow.split("## Basic planning", 1)[1].split(
+            "## Capacity and reserves", 1
+        )[0]
+        self.assertLessEqual(len((skill + basic).encode("utf-8")), 5500)
 
     def test_documented_example_is_valid_and_snapshot_matches(self):
         self.assertEqual([], validator.validate_plan(self.valid))

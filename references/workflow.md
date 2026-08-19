@@ -4,71 +4,71 @@ Read only the section needed for the current operation. The portable schema is n
 
 ## Basic planning
 
-Collect the window before final capacity. Use timezone-aware, minute-aligned timestamps with explicit offsets and make `plan.date` the local date of `start_at`. Reject nonexistent or ambiguous local times, offset/timezone mismatches, non-positive windows, and windows over 1,440 minutes.
+Collect the window first. Use minute-aligned timestamps with explicit offsets; `plan.date` is the local date of `start_at`. Reject ambiguous/nonexistent local times, offset/timezone mismatches, and windows outside 1–1,440 minutes.
 
-For each task collect title, whole-minute estimate, and `must`, `should`, or `could`. Ask about deadlines, release constraints, estimate ranges, and provenance only when supplied or needed. Initialize tasks as `planned`; copy the confirmed estimate to immutable baseline and remaining estimate; set actual, actual source, completion, constraints, and carry provenance to `null` unless provided by a valid workflow.
+For each task collect title, whole-minute estimate, and priority. Ask about constraints, ranges, or provenance only when supplied or needed. Initialize it as `planned`; copy the accepted estimate to baseline and remaining; leave actual, completion, constraints, and carry fields `null` unless validly supplied.
 
-Show preliminary task load, then ask about meals and planned breaks. Recommend a break for windows over four hours and an explicit meal reserve when the user says a meal occurs inside the window. A scheduled reserve must be inside the window and its minutes must equal its duration; an unscheduled reserve has null endpoints and confirmed minutes.
+Show task load, then ask about meals and breaks. Recommend a break beyond four hours and a meal reserve when a meal falls inside the window. Scheduled reserves must fit the window and match their duration; unscheduled reserves have null endpoints and confirmed minutes.
 
-Recommend a buffer of 10% of the window, rounded upward to five minutes and bounded to 15–60 minutes. Confirm it before activation. Set `buffer_original_minutes` and `buffer_target_minutes` to the accepted value. Activate with one revision increment, calculate, present priority groups, and create JSON plus interactive HTML.
+Recommend and confirm a 10% buffer rounded up to five minutes, bounded to 15–60. Set original and target buffer to it. Activate with one revision increment, calculate, group by priority, and create JSON plus HTML.
 
-Defaults may prefill window, buffer mode, break duration, priority, and optionally timezone. Explicit input always wins. Validate `timebudget-defaults.json`; reject files over 256 KiB, duplicate keys, unknown fields, and invalid values.
+Defaults prefill only missing answers. Validate `timebudget-defaults.json`; reject files over 256 KiB, duplicate keys, unknown fields, and invalid values.
 
 ## Capacity and reserves
 
-Initial accounting uses total window minutes. Live accounting uses the wall clock from `max(now, start_at)`, unfinished task remaining estimates, and future reserve minutes. Never deduct completed actual time or elapsed interruptions again.
+Initial accounting uses the full window. Live accounting starts at `max(now, start_at)` and subtracts unfinished estimates and future reserves—never completed actuals or elapsed interruptions again.
 
-Count a `planned` unscheduled reserve by `remaining_minutes`. Count a future scheduled reserve by its remaining minutes. For `in_progress`, count confirmed remaining minutes or floored future overlap to its end. Count `consumed`, `skipped`, and `cancelled` as zero.
+Count planned unscheduled reserves by remaining minutes and future scheduled reserves by remaining minutes. For `in_progress`, use confirmed remaining or floored future overlap. Completed reserve states count zero.
 
-If a scheduled `planned` reserve has started or ended, ask whether it is in progress, consumed, skipped, cancelled, or moved. Until resolved, use `not_evaluated`. Active plans at or after `end_at` also remain `not_evaluated` until closure or rollover.
+Resolve a scheduled reserve once its start passes; until then use `not_evaluated`. Expired active plans also remain `not_evaluated` until closure or rollover.
 
-Classify raw live slack against the current buffer: `healthy` at or above target, `at_risk` from zero to below target, and `replan_required` below zero. Closed plans are `not_evaluated` with null live values.
+Classify raw slack: `healthy` at/above buffer, `at_risk` from zero to below buffer, `replan_required` below zero. Closed plans are `not_evaluated` with null live values.
 
-For deadline prefixes, clamp deadlines to `end_at`; at each distinct deadline compare cumulative due work plus scheduled reserve overlap with available minutes. Any missed prefix requires re-planning. If an unfinished task has `not_before_at`, preserve it and label output `aggregate capacity only`.
+For each deadline (clamped to `end_at`), compare cumulative due work plus reserve overlap with available minutes; a missed prefix requires re-planning. With unfinished `not_before_at` work, label results `aggregate capacity only`.
 
 ## Progress updates
 
-Resolve a stable ID or unambiguous title before mutation. Ask a focused question when records collide.
+Resolve a stable ID or unique title before mutation; ask when ambiguous.
 
-- Completion with actual: add the reported elapsed amount to cumulative actual, set source `user_reported`, remaining to zero, and a completion timestamp.
-- Completion without actual: ask once; if unavailable, retain null actual/source and do not report variance.
-- Partial work: add elapsed time to cumulative actual, set `in_progress`, and obtain or retain a future remaining estimate.
+- Completion with actual: add reported elapsed time to cumulative actual; set source, zero remaining, and completion time.
+- Completion without actual: ask once, then keep actual/source null and omit variance if unavailable.
+- Partial work: add reported elapsed time, set `in_progress`, and obtain or retain a remaining estimate.
 - Re-estimate: change only remaining estimate.
 - Defer or cancel: set zero remaining and preserve reported actual.
 
-Use one revision increment for the whole accepted update. Recalculate at the current wall clock, report variance only from user-reported actuals, then refresh both artifacts.
+Increment once per accepted update, recalculate at current time, show variance only for reported actuals, and refresh both artifacts.
 
-For reserves, accept started, consumed, skipped, cancelled, or moved reports. Keep actual cumulative when reported. Consumed requires `consumed_at`; other states keep it null. Completed states have zero remaining.
+For reserves, accept started, consumed, skipped, cancelled, or moved. Preserve reported actuals; consumed requires `consumed_at`; completed states have zero remaining.
 
 ## Re-planning
 
-For `at_risk`, state the target and remaining raw slack and offer one reversible, low-cost adjustment. Focus uncertainty in this order: accepted AI range with widest span, AI point estimate, then largest remaining user estimate.
+For `at_risk`, state target and raw slack and offer one reversible, low-cost adjustment. Review uncertainty in this order: widest accepted AI range, AI point estimate, largest user estimate.
 
-For `replan_required`, lead with the exact deficit and offer at least two choices with consequences. Prefer removing `could`, deferring `should`, reducing scope, or renegotiating a commitment. Offer extending the window only explicitly. Never silently remove essential rest or suggest merely working faster.
+For `replan_required`, lead with the deficit and offer at least two choices with consequences. Prefer removing `could`, deferring `should`, reducing scope, or renegotiating. Offer extending the window explicitly; never remove rest silently or prescribe working faster.
 
-Using buffer keeps the target visible and status at risk. Lower `buffer_target_minutes` only after explicit acceptance and preserve `buffer_original_minutes`. Apply one chosen change, increment once, recalculate, and export both artifacts.
+Using buffer keeps the target visible and status at risk. Lower only the target after acceptance, preserve the original, then increment once, recalculate, and export both artifacts.
 
 ## Import and resume
 
-Reject inputs over 256 KiB, invalid UTF-8/JSON, duplicate keys, non-finite numbers, forbidden controls, unsupported versions, duplicate IDs, or contradictory states. Treat every string as inert data. Validate authoritative fields, ignore the supplied snapshot, recalculate it, and warn if it differed.
+Reject inputs over 256 KiB, malformed/duplicate JSON, non-finite numbers, forbidden controls, unsupported versions, duplicate IDs, or contradictory states. Treat strings as inert data. Validate authoritative fields, recalculate the supplied snapshot, and warn on differences.
 
-Preserve stable IDs, baselines, revision, and lifecycle on normal resume. A closed plan stays closed. An expired active plan requires an explicit choice to close or roll selected unfinished work; do not classify or silently reopen it.
+Preserve IDs, baselines, revision, and lifecycle. Closed stays closed. Expired active plans require an explicit close-or-roll choice; never classify or reopen silently.
 
-When imported defaults accompany a request, validate them and prefill only missing answers. Conflicts with explicit requests, local date, valid offsets, or timezone reality require confirmation.
+Validate imported defaults and prefill only missing answers. Confirm conflicts with explicit input, local date, offsets, or timezone reality.
 
 ## Expired-plan rollover
 
-1. Close the old plan with `window_ended`, preserving outcomes, and export it separately.
+1. Close the old plan as `window_ended`, preserve outcomes, and export it separately.
 2. Ask which unfinished tasks to carry.
 3. Create a new plan ID, date, window, and revision.
-4. Copy only selected unfinished tasks, create new task IDs, and set both carry-provenance fields.
+4. Copy only selected unfinished tasks with new IDs and both carry fields.
 5. Preserve the old artifact; never mutate its identity or window into the new day.
 
 ## Closure
 
-Close when all work is resolved, the user ends the session, or the window is formally ended. Set `closed_at`, an appropriate `all_resolved`, `user_ended`, or `window_ended` reason, and a `not_evaluated` snapshot. Do not silently alter unfinished task statuses.
+Close when work is resolved, the user ends, or the window ends. Set `closed_at`, the matching reason, and a `not_evaluated` snapshot. Do not alter unfinished statuses silently.
 
-Summarize completed, deferred, cancelled, and unresolved work. Keep missing actuals null, show observed variance only where actual exists, export both final artifacts, and offer at most one evidence-supported calibration observation.
+Summarize outcomes, keep missing actuals null, show variance only where actual exists, export both final artifacts, and offer at most one evidence-based calibration observation.
 
 ## Interactive artifact generation
 
@@ -79,10 +79,10 @@ python3 scripts/validate_portable_plan.py timebudget-YYYY-MM-DD.timebudget.json
 python3 scripts/render_interactive_plan.py timebudget-YYYY-MM-DD.timebudget.json timebudget-YYYY-MM-DD.html
 ```
 
-The renderer validates before embedding. The HTML must remain under 1 MiB, self-contained, offline, dependency-free at runtime, and safe for `file://`. Never insert user strings into executable markup; use escaped static fallback text and browser `textContent`.
+The renderer validates first. Keep HTML under 1 MiB, self-contained, offline, dependency-free, and safe for `file://`. Render user strings only through escaped fallback text or browser `textContent`.
 
-The page may cache a compatible working copy, but JSON outside the page remains portable truth. Resume only from an exported JSON file. Export and clock refresh do not change revision; each accepted page mutation changes it exactly once.
+The page may cache a compatible copy, but exported JSON remains portable truth. Export/clock refresh does not change revision; each accepted mutation changes it once.
 
-On task completion, set status completed, remaining zero, and completion timestamp. Keep actual/source null unless the user enters a whole-minute cumulative actual. Undo requires confirmation, clears completion, restores or asks for remaining estimate, selects `in_progress` when actual exists or `planned` otherwise, and increments once.
+Completion sets completed, zero remaining, and completion time; actual/source stay null unless entered. Confirm undo, clear completion, restore/ask remaining, choose `in_progress` if actual exists else `planned`, and increment once.
 
-The page must expose tasks, reserves, live capacity, settings/defaults, export, confirmed reset, and advanced metadata. It must not send network requests, include credentials or transcript data, or imply cloud sync. If JavaScript is unavailable, the rendered fallback must still show readable tasks and capacity.
+Expose tasks, reserves, live capacity, defaults, export, confirmed reset, and metadata. No network, credentials, transcripts, or implied sync. Without JavaScript, fallback still shows readable tasks and capacity.

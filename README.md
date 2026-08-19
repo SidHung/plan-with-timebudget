@@ -27,7 +27,7 @@ Use $skill-installer to install the skill from
 https://github.com/SidHung/plan-with-timebudget
 ```
 
-The repository is private during development, so installation currently requires repository access. Codex detects installed skills automatically; restart Codex if it does not appear.
+The repository is public. Codex detects installed skills automatically; restart Codex if it does not appear.
 
 ## How to use it
 
