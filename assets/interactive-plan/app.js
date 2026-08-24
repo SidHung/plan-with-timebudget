@@ -8,12 +8,6 @@
   const RESERVE_KEYS = ["id", "type", "title", "minutes", "status", "start_at", "end_at", "remaining_minutes", "actual_minutes", "consumed_at"];
   const SNAPSHOT_KEYS = ["as_of", "total_plan_minutes", "clock_minutes_remaining", "unfinished_estimated_minutes", "pending_reserve_minutes", "raw_slack_minutes", "buffer_target_minutes", "safe_slack_minutes", "capacity_status"];
   const DEFAULT_KEYS = ["format", "schema_version", "timezone", "planning_start", "planning_end", "buffer", "default_break_minutes", "default_task_priority"];
-  const STATUS_LABELS = {
-    healthy: "Healthy",
-    at_risk: "At risk",
-    replan_required: "Re-plan required",
-    not_evaluated: "Not evaluated",
-  };
   const PRIORITIES = ["must", "should", "could"];
 
   const embeddedPlan = JSON.parse(document.getElementById("embedded-plan").textContent);
@@ -302,10 +296,14 @@
     target.replaceChildren(...children);
   }
 
-  function formatMinutes(value) {
+  function formatDuration(value) {
     if (value === null) return "—";
-    const sign = value < 0 ? "−" : "";
-    return `${sign}${Math.abs(value)} min`;
+    const absolute = Math.abs(value);
+    const hours = Math.floor(absolute / 60);
+    const minutes = absolute % 60;
+    if (hours && minutes) return `${hours}h ${minutes}m`;
+    if (hours) return `${hours}h`;
+    return `${minutes}m`;
   }
 
   function formatWindow() {
@@ -323,35 +321,77 @@
     window.setTimeout(() => { live.textContent = message; }, 20);
   }
 
-  function renderHeader() {
-    document.getElementById("plan-date").textContent = plan.plan.date;
-    document.getElementById("plan-window").textContent = formatWindow();
-    const badge = document.getElementById("status-badge");
-    badge.className = `status-badge status-${plan.snapshot.capacity_status.replaceAll("_", "-")}`;
-    badge.textContent = STATUS_LABELS[plan.snapshot.capacity_status];
+  function planDateAtNoon(dayOffset = 0) {
+    const [year, month, day] = plan.plan.date.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day + dayOffset, 12));
   }
 
-  function renderCapacity() {
-    const metrics = [
-      ["Clock time remaining", plan.snapshot.clock_minutes_remaining],
-      ["Unfinished work", plan.snapshot.unfinished_estimated_minutes],
-      ["Pending reserves", plan.snapshot.pending_reserve_minutes],
-      ["Buffer target", plan.snapshot.buffer_target_minutes],
-      ["Safe slack", plan.snapshot.safe_slack_minutes],
-    ].map(([label, value]) => {
-      const card = element("article", "metric");
-      card.append(element("span", "", label), element("strong", "", formatMinutes(value)));
-      return card;
-    });
-    replaceChildren(document.getElementById("capacity-grid"), metrics);
-    const hasRelease = plan.tasks.some((task) => ["planned", "in_progress"].includes(task.status) && task.not_before_at !== null);
-    const messages = {
-      healthy: "The remaining work fits while preserving the current buffer.",
-      at_risk: "The work fits only by using some or all of the current buffer.",
-      replan_required: `The plan exceeds remaining capacity by ${Math.abs(plan.snapshot.raw_slack_minutes || 0)} minutes.`,
-      not_evaluated: "Live capacity cannot be evaluated for a closed, expired, or reserve-unresolved plan.",
-    };
-    document.getElementById("capacity-message").textContent = messages[plan.snapshot.capacity_status] + (hasRelease ? " Aggregate capacity only because at least one task has a release constraint." : "");
+  function renderHeader() {
+    const date = planDateAtNoon();
+    document.getElementById("plan-date-label").textContent = new Intl.DateTimeFormat("en-GB", {
+      day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+    }).format(date);
+    document.getElementById("plan-window").textContent = formatWindow();
+    const week = document.getElementById("week-strip");
+    const weekday = date.getUTCDay();
+    const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+    const dayFormatter = new Intl.DateTimeFormat("en", { weekday: "short", timeZone: "UTC" });
+    week.replaceChildren();
+    for (let index = 0; index < 7; index += 1) {
+      const offset = mondayOffset + index;
+      const current = planDateAtNoon(offset);
+      const item = element("li", `week-day ${offset === 0 ? "active" : ""}`.trim());
+      item.append(element("span", "", dayFormatter.format(current)), element("strong", "", String(current.getUTCDate())));
+      if (offset === 0) item.setAttribute("aria-current", "date");
+      week.appendChild(item);
+    }
+  }
+
+  function renderOverview() {
+    const snapshot = plan.snapshot;
+    const ring = document.getElementById("time-ring");
+    const label = document.getElementById("availability-label");
+    const value = document.getElementById("availability-value");
+    const detail = document.getElementById("availability-detail");
+    const raw = snapshot.raw_slack_minutes;
+    const evaluated = raw !== null && snapshot.clock_minutes_remaining !== null;
+    ring.classList.toggle("overbooked", evaluated && raw < 0);
+
+    if (!evaluated) {
+      label.textContent = "Plan status";
+      value.textContent = plan.plan.lifecycle_status === "closed" ? "Finished" : "Update needed";
+      detail.textContent = plan.plan.lifecycle_status === "closed" ? "This plan is closed" : "Review elapsed protected time";
+      ring.style.setProperty("--ring", "conic-gradient(var(--elapsed) 0 100%)");
+      ring.setAttribute("aria-label", `${value.textContent}. ${detail.textContent}.`);
+      return;
+    }
+
+    if (raw < 0) {
+      label.textContent = "Over by";
+      value.textContent = formatDuration(raw);
+      detail.textContent = "Reduce work or extend the plan";
+    } else if (raw === 0) {
+      label.textContent = "Fully planned";
+      value.textContent = "0m";
+      detail.textContent = "No unallocated time remains";
+    } else {
+      label.textContent = "Available";
+      value.textContent = formatDuration(raw);
+      detail.textContent = "After tasks and protected time";
+    }
+
+    const total = Math.max(1, snapshot.total_plan_minutes);
+    const elapsed = Math.max(0, total - snapshot.clock_minutes_remaining);
+    const remainingArc = Math.max(0, total - Math.min(total, elapsed));
+    const work = Math.min(snapshot.unfinished_estimated_minutes, remainingArc);
+    const protectedMinutes = Math.min(snapshot.pending_reserve_minutes, Math.max(0, remainingArc - work));
+    const open = Math.max(0, remainingArc - work - protectedMinutes);
+    const elapsedEnd = (Math.min(total, elapsed) / total) * 100;
+    const workEnd = elapsedEnd + (work / total) * 100;
+    const protectedEnd = workEnd + (protectedMinutes / total) * 100;
+    const openEnd = protectedEnd + (open / total) * 100;
+    ring.style.setProperty("--ring", `conic-gradient(var(--elapsed) 0 ${elapsedEnd}%, var(--task) ${elapsedEnd}% ${workEnd}%, var(--protected) ${workEnd}% ${protectedEnd}%, var(--open) ${protectedEnd}% ${openEnd}%, var(--elapsed) ${openEnd}% 100%)`);
+    ring.setAttribute("aria-label", `${label.textContent}: ${value.textContent}. Tasks ${formatDuration(snapshot.unfinished_estimated_minutes)}, protected time ${formatDuration(snapshot.pending_reserve_minutes)}.`);
   }
 
   function taskMeta(task) {
@@ -359,7 +399,6 @@
       `Estimate ${task.baseline_estimated_minutes} min`,
       `Remaining ${task.remaining_estimate_minutes} min`,
       task.actual_minutes === null ? "Actual not reported" : `Actual ${task.actual_minutes} min`,
-      `Status ${task.status.replaceAll("_", " ")}`,
     ];
     if (task.actual_minutes !== null) {
       const variance = task.actual_minutes - task.baseline_estimated_minutes;
@@ -451,20 +490,11 @@
   }
 
   function renderTasks() {
-    const groups = [];
-    for (const priority of PRIORITIES) {
-      const tasks = plan.tasks.filter((task) => task.priority === priority);
-      if (!tasks.length) continue;
-      const group = element("section", "task-group");
-      const heading = element("h3", "", priority);
-      heading.appendChild(element("span", "task-count", String(tasks.length)));
-      const list = element("div", "task-list");
-      tasks.forEach((task) => list.appendChild(taskCard(task)));
-      group.append(heading, list);
-      groups.push(group);
-    }
-    if (!groups.length) groups.push(element("p", "empty-state", "No tasks in this plan."));
-    replaceChildren(document.getElementById("task-groups"), groups);
+    const cards = plan.tasks.map(taskCard);
+    if (!cards.length) cards.push(element("p", "empty-state", "No tasks in this plan."));
+    replaceChildren(document.getElementById("task-groups"), cards);
+    const completed = plan.tasks.filter((task) => task.status === "completed").length;
+    document.getElementById("task-summary").textContent = `${completed} of ${plan.tasks.length} complete`;
   }
 
   function renderReserves() {
@@ -472,9 +502,9 @@
       const card = element("article", "reserve-card");
       card.append(
         element("strong", "", reserve.title),
-        element("p", "", `${reserve.type.replaceAll("_", " ")} · ${reserve.status.replaceAll("_", " ")} · ${reserve.remaining_minutes} min remaining`),
+        element("p", "", `${reserve.type.replaceAll("_", " ")} · ${reserve.remaining_minutes} min remaining`),
       );
-      if (reserve.start_at !== null) card.appendChild(element("p", "", `${formatPlanTime(reserve.start_at)}–${formatPlanTime(reserve.end_at)}`));
+      if (reserve.start_at !== null) card.appendChild(element("p", "reserve-time", `${formatPlanTime(reserve.start_at)}–${formatPlanTime(reserve.end_at)}`));
       return card;
     });
     if (!cards.length) cards.push(element("p", "empty-state", "No explicit reserves in this plan."));
@@ -490,32 +520,26 @@
     current.replaceChildren();
     appendDefinition(current, "Timezone", plan.plan.timezone);
     appendDefinition(current, "Window", formatWindow());
-    appendDefinition(current, "Buffer", `${plan.plan.buffer_target_minutes} min target (${plan.plan.buffer_original_minutes} min original)`);
 
     document.getElementById("default-start").value = defaults.planning_start;
     document.getElementById("default-end").value = defaults.planning_end;
     document.getElementById("save-timezone").checked = defaults.timezone !== null;
     document.getElementById("default-timezone").value = defaults.timezone || plan.plan.timezone;
     document.getElementById("default-timezone").disabled = defaults.timezone === null;
-    document.getElementById("default-buffer-mode").value = defaults.buffer.mode;
-    document.getElementById("default-buffer-minutes").value = defaults.buffer.minutes === null ? "" : String(defaults.buffer.minutes);
-    document.getElementById("default-buffer-minutes").disabled = defaults.buffer.mode === "recommended";
     document.getElementById("default-break").value = String(defaults.default_break_minutes);
-    document.getElementById("default-priority").value = defaults.default_task_priority;
   }
 
   function readDefaultsForm() {
     const saveTimezone = document.getElementById("save-timezone").checked;
-    const mode = document.getElementById("default-buffer-mode").value;
     const result = {
       format: "timebudget-defaults",
       schema_version: "1.0.0",
       timezone: saveTimezone ? document.getElementById("default-timezone").value.trim() : null,
       planning_start: document.getElementById("default-start").value,
       planning_end: document.getElementById("default-end").value,
-      buffer: { mode, minutes: mode === "fixed" ? Number(document.getElementById("default-buffer-minutes").value) : null },
+      buffer: clone(defaults.buffer),
       default_break_minutes: Number(document.getElementById("default-break").value),
-      default_task_priority: document.getElementById("default-priority").value,
+      default_task_priority: defaults.default_task_priority,
     };
     if (!validDefaults(result)) throw new Error("Check the defaults fields. Times use HH:MM and minute values must be whole numbers from 0 to 1440.");
     return result;
@@ -538,7 +562,7 @@
   function render() {
     plan.snapshot = calculateSnapshot(plan);
     renderHeader();
-    renderCapacity();
+    renderOverview();
     renderTasks();
     renderReserves();
     renderSettings();
@@ -574,12 +598,6 @@
 
   document.getElementById("save-timezone").addEventListener("change", (event) => {
     document.getElementById("default-timezone").disabled = !event.target.checked;
-  });
-  document.getElementById("default-buffer-mode").addEventListener("change", (event) => {
-    const fixed = event.target.value === "fixed";
-    const input = document.getElementById("default-buffer-minutes");
-    input.disabled = !fixed;
-    if (fixed && input.value === "") input.value = String(plan.plan.buffer_target_minutes);
   });
   document.getElementById("export-defaults").addEventListener("click", () => {
     try {

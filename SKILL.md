@@ -1,6 +1,6 @@
 ---
 name: plan-with-timebudget
-description: Plan, maintain, re-plan, resume, and export a realistic daily time budget with protected meals, breaks, and uncertainty. Use for a concrete daily planning window, capacity checks, progress updates, or TimeBudget plan/defaults files. Do not use for simple todo formatting, generic productivity advice, multi-day project planning, or calendar booking without capacity reasoning.
+description: Plan, maintain, re-plan, resume, and export a realistic daily time budget with protected meals and breaks. Use for a concrete daily planning window, fit checks, progress updates, or TimeBudget plan/defaults files. Do not use for simple todo formatting, generic productivity advice, multi-day project planning, or calendar booking without time-capacity reasoning.
 ---
 
 # Plan with TimeBudget
@@ -18,25 +18,24 @@ Maintain one user-driven daily plan. Treat time as finite capacity, protect esse
 ## Basic planning
 
 1. Confirm local date, start/end, and IANA timezone. Require explicit dates across midnight; reject windows outside 1–1,440 minutes.
-2. Collect each task's exact title, whole-minute estimate, and `must`, `should`, or `could` priority. Ask for missing estimates; store AI estimates only after acceptance.
-3. Show task load; confirm meals, breaks, fixed commitments, and a buffer. Recommend 10% of the window, rounded up to five minutes and bounded to 15–60; activate only after confirmation.
-4. Defaults prefill missing answers only. Activate once, calculate, group by priority, and create both artifacts when files are supported:
+2. Collect each task's exact title and whole-minute estimate. Ask for missing estimates; store AI estimates only after acceptance.
+3. Confirm meals, breaks, and fixed commitments. Show whether everything fits and the exact available or overbooked time; activate only after confirmation.
+4. Defaults prefill missing answers only. For a new plan, write the minimal draft described in **Basic planning**, then run `python3 scripts/create_timebudget_plan.py DRAFT JSON HTML` to create both artifacts:
    - `timebudget-YYYY-MM-DD.timebudget.json`
    - `timebudget-YYYY-MM-DD.html`
 
 Otherwise provide portable JSON and explain that HTML generation needs a file-capable host; do not handwrite a large HTML fallback.
 
-## Capacity contract
+## Fit contract
 
-Initial capacity is `window - unfinished work - pending reserves`. Once underway:
+Initial availability is `window - unfinished work - protected time`. Once underway:
 
 ```text
 clock = floor(end_at - max(now, start_at))
-raw_slack = clock - unfinished_work - pending_reserves
-safe_slack = raw_slack - buffer_target
+available = clock - unfinished_work - protected_time
 ```
 
-Use `healthy` when raw slack preserves the buffer, `at_risk` when it is non-negative but below the buffer, and `replan_required` when negative. Use `not_evaluated` for closed/expired plans or unresolved elapsed reserves. Never deduct completed actuals or elapsed interruptions twice.
+`available >= 0` fits; otherwise report the exact overage. Use `not_evaluated` for closed/expired plans or unresolved elapsed reserves. Never deduct completed actuals or elapsed interruptions twice. Keep legacy priority/buffer/slack fields internal.
 
 Check deadline prefixes. If unfinished work has `not_before_at`, label feasibility `aggregate capacity only`. Do not invent order or time blocks unless requested.
 
@@ -50,8 +49,8 @@ Check deadline prefixes. If unfinished work has `not_before_at`, label feasibili
 
 ## Present, protect, and export
 
-Lead with fit or exact deficit. Show window, unfinished work, reserves, raw/target/safe slack, status, and priority groups. Show variance only where actual exists.
+Lead with available time or exact overage. Show the window, unfinished work, protected time, and task list. Show variance only where actual exists.
 
-When at risk, give one low-cost option. When overloaded, offer at least two concrete choices. Protect end time, meals, breaks, rest, and sleep; apply no re-plan without acceptance.
+When overloaded, offer at least two concrete choices. Protect end time, meals, breaks, rest, and sleep; apply no re-plan without acceptance.
 
 After activation or mutation, refresh JSON and run `python3 scripts/render_interactive_plan.py JSON HTML`. JSON is portable truth; browser changes become authoritative only after export. Do not claim monitoring, sync, reminders, or automatic persistence.

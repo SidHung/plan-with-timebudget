@@ -54,9 +54,8 @@ def _static_fallback(plan: dict[str, Any]) -> str:
     for task in plan["tasks"]:
         checked = "completed" if task["status"] == "completed" else task["status"]
         detail = (
-            f"{task['priority']} · {checked} · estimate "
-            f"{task['baseline_estimated_minutes']} min · remaining "
-            f"{task['remaining_estimate_minutes']} min"
+            f"{checked} · estimate {task['baseline_estimated_minutes']} min · "
+            f"remaining {task['remaining_estimate_minutes']} min"
         )
         task_items.append(
             "<li><strong>"
@@ -75,16 +74,23 @@ def _static_fallback(plan: dict[str, Any]) -> str:
             + html.escape(detail, quote=True)
             + "</span></li>"
         )
+    raw = snapshot["raw_slack_minutes"]
+    if raw is None:
+        availability = "Availability needs an update."
+    elif raw < 0:
+        availability = f"Over by {abs(raw)} min."
+    elif raw == 0:
+        availability = "Fully planned."
+    else:
+        availability = f"{raw} min available."
     return "".join(
         [
             '<section class="noscript-card"><h1>TimeBudget plan</h1>',
             f"<p><strong>{html.escape(plan['plan']['date'])}</strong> · ",
             f"{html.escape(plan['plan']['start_at'])} to {html.escape(plan['plan']['end_at'])}</p>",
-            f"<p>Status: <strong>{html.escape(snapshot['capacity_status'])}</strong>. ",
-            f"Clock remaining: {_format_minutes(snapshot['clock_minutes_remaining'])}. ",
-            f"Unfinished work: {_format_minutes(snapshot['unfinished_estimated_minutes'])}. ",
-            f"Pending reserves: {_format_minutes(snapshot['pending_reserve_minutes'])}. ",
-            f"Safe slack: {_format_minutes(snapshot['safe_slack_minutes'])}.</p>",
+            f"<p><strong>{html.escape(availability)}</strong> ",
+            f"Tasks: {_format_minutes(snapshot['unfinished_estimated_minutes'])}. ",
+            f"Protected time: {_format_minutes(snapshot['pending_reserve_minutes'])}.</p>",
             "<h2>Today's tasks</h2><ul>",
             "".join(task_items) or "<li>No tasks</li>",
             "</ul><h2>Reserves</h2><ul>",

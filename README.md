@@ -6,13 +6,13 @@ Plan with TimeBudget is a lightweight, standalone way to experience capacity-fir
 
 ## What the Skill does
 
-The Skill turns a concrete daily window into a capacity budget. It collects estimates and priorities, protects explicit reserves and a flexibility buffer, shows whether the work fits, and helps re-plan when reality changes. Reported actual time always stays separate from estimates.
+The Skill turns a concrete daily window into a visual time budget. It collects task estimates, protects explicit meals and breaks, shows available or overbooked time, and helps re-plan when reality changes. Reported actual time always stays separate from estimates.
 
-After activation it creates both a portable JSON plan and a self-contained interactive HTML page. The page can be opened directly from disk to check off work, add an optional actual duration, see live remaining capacity, manage reusable defaults, and export an updated plan.
+After activation it creates both a portable JSON plan and a self-contained interactive HTML page. The model supplies only a small plan draft; a bundled script expands it and injects it into the fixed HTML assets. The page can be opened directly from disk to check off work, add an optional actual duration, see available time, manage reusable defaults, and export an updated plan.
 
 ## Example output
 
-- A plan grouped into `must`, `should`, and `could` work with a numerical capacity status.
+- A focused task list with a visual ring showing tasks, protected time, and what remains available.
 - `timebudget-YYYY-MM-DD.timebudget.json`, the machine-readable source of truth.
 - `timebudget-YYYY-MM-DD.html`, an offline interactive view with completion controls, live capacity, defaults, and export.
 
@@ -31,7 +31,7 @@ The repository is public. Codex detects installed skills automatically; restart 
 
 ## How to use it
 
-Invoke the Skill with a concrete date or daily planning window, then provide task estimates and any known meals, breaks, or fixed commitments. Confirm the proposed flexibility buffer before the plan activates.
+Invoke the Skill with a concrete date or daily planning window, then provide task estimates and any known meals, breaks, or fixed commitments. The Skill checks whether they fit before activation.
 
 ```text
 Use $plan-with-timebudget to plan today from 9:00 to 18:00.
@@ -89,6 +89,9 @@ The package root is directly installable as a Skill. Runtime artifacts use only 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
 node --test tests/test_interactive_plan.mjs
+python3 scripts/create_timebudget_plan.py \
+  tests/fixtures/minimal-draft.json /tmp/timebudget-plan.json /tmp/timebudget-plan.html \
+  --as-of 2026-08-16T09:00:00+08:00
 python3 scripts/validate_portable_plan.py tests/fixtures/valid-plan.timebudget.json
 python3 scripts/validate_portable_plan.py --defaults tests/fixtures/valid-defaults.json
 python3 scripts/render_interactive_plan.py \
