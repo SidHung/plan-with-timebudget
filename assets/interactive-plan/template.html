@@ -30,11 +30,26 @@
 
     <main>
       <section class="overview" aria-labelledby="availability-value">
-        <div id="time-ring" class="time-ring" role="img">
+        <div id="time-ring" class="time-ring" role="button" tabindex="0" aria-expanded="false" aria-controls="ring-details">
           <div class="ring-center">
             <span id="availability-label">Available</span>
             <strong id="availability-value">—</strong>
             <small id="availability-detail"></small>
+          </div>
+          <div id="ring-details" class="ring-details" role="tooltip" hidden>
+            <strong>Time details</strong>
+            <dl class="ring-detail-summary">
+              <dt>Elapsed</dt><dd id="ring-elapsed"></dd>
+              <dt>Available</dt><dd id="ring-available"></dd>
+            </dl>
+            <div class="ring-detail-group">
+              <span><i class="dot work"></i>Tasks</span>
+              <ul id="ring-task-details"></ul>
+            </div>
+            <div class="ring-detail-group">
+              <span><i class="dot protected"></i>Protected</span>
+              <ul id="ring-reserve-details"></ul>
+            </div>
           </div>
         </div>
         <p id="plan-window" class="window"></p>
@@ -43,6 +58,7 @@
           <span><i class="dot protected"></i>Protected</span>
           <span><i class="dot open"></i>Available</span>
         </div>
+        <p class="ring-hint">Hover, focus, or tap the ring for details.</p>
       </section>
 
       <section class="content-section" aria-labelledby="tasks-heading">

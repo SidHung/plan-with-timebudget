@@ -246,7 +246,25 @@ test("offline interactive plan completion, cache, export, defaults, conflicts, a
     assert.equal(await evaluate(page, "document.querySelector('[data-task-id=task_002] .task-title').textContent"), fixture.tasks[1].title);
     assert.equal(await evaluate(page, "document.getElementById('task-groups').innerText.includes('Must')"), false);
     assert.equal(await evaluate(page, "document.querySelectorAll('img, script[src], link[href]').length"), 0);
-    assert.equal(await evaluate(page, "[...document.querySelectorAll('button,input,select,summary')].filter((node)=>!node.disabled).every((node)=>node.tabIndex>=0)"), true);
+    assert.equal(await evaluate(page, "[...document.querySelectorAll('button,input,select,summary,[role=button]')].filter((node)=>!node.disabled).every((node)=>node.tabIndex>=0)"), true);
+
+    assert.equal(await evaluate(page, "document.getElementById('ring-details').hidden"), true);
+    const ringPoint = await evaluate(page, "(() => { const box=document.getElementById('time-ring').getBoundingClientRect(); return {x:box.left+box.width/2,y:box.top+box.height/2}; })()");
+    await page.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: ringPoint.x, y: ringPoint.y });
+    await waitFor(() => evaluate(page, "document.getElementById('ring-details').hidden === false"));
+    const ringDetails = await evaluate(page, "document.getElementById('ring-details').innerText");
+    assert.equal(ringDetails.includes(fixture.tasks[1].title), true);
+    assert.match(ringDetails, /Protected break/);
+    assert.doesNotMatch(ringDetails, /Finished proposal/);
+    assert.equal(await evaluate(page, "document.getElementById('time-ring').getAttribute('aria-expanded')"), "true");
+    await page.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 1, y: 1 });
+    await waitFor(() => evaluate(page, "document.getElementById('ring-details').hidden === true"));
+
+    await evaluate(page, "document.getElementById('time-ring').focus()");
+    assert.equal(await evaluate(page, "document.getElementById('ring-details').hidden"), false);
+    await page.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape" });
+    await page.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape" });
+    assert.equal(await evaluate(page, "document.getElementById('ring-details').hidden"), true);
 
     const initialRaw = await evaluate(page, "document.getElementById('raw-json').textContent");
     const initial = JSON.parse(initialRaw);

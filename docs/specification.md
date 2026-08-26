@@ -2,6 +2,8 @@
 
 > v0.3.2 streamlined-experience addendum: new plans collect only window, task titles/estimates, and protected time. The fixed offline HTML uses a week strip and central time ring, and does not expose priority, buffer, raw slack, or safe slack. `scripts/create_timebudget_plan.py` expands a minimal draft into the unchanged portable plan 1.0.0 contract; older priority and buffer requirements below remain compatibility rules for imported files, not normal user-facing steps.
 
+> v0.3.3 interaction addendum: hovering, focusing, or tapping the time ring reveals the unfinished task names and remaining minutes, protected-time items, elapsed time, and available/overbooked time. The same details must be keyboard accessible and rendered as inert text.
+
 - 狀態：實作規格草案
 - 版本：0.3.0
 - Skill 名稱：`plan-with-timebudget`

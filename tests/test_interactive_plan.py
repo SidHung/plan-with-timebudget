@@ -49,6 +49,7 @@ class InteractivePlanRendererTests(unittest.TestCase):
         self.assertNotRegex(document, r"<(?:script|link)[^>]+(?:src|href)=")
         self.assertNotIn("fetch(", document)
         self.assertIn("Export updated plan", document)
+        self.assertIn('id="ring-details"', document)
         self.assertIn("<noscript>", document)
 
     def test_embedded_plan_round_trips_and_is_schema_valid(self):

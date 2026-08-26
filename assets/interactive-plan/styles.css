@@ -22,7 +22,7 @@ html { background: var(--page); }
 body { margin: 0; color: var(--ink); background: var(--page); }
 button, input { font: inherit; }
 button, .file-button { min-height: 44px; }
-button:focus-visible, input:focus-visible, summary:focus-visible, pre:focus-visible {
+button:focus-visible, input:focus-visible, summary:focus-visible, pre:focus-visible, .time-ring:focus-visible {
   outline: 3px solid #efb62d;
   outline-offset: 3px;
 }
@@ -42,7 +42,7 @@ p { overflow-wrap: anywhere; }
 
 main { display: grid; gap: 18px; margin-top: 28px; }
 .overview { display: grid; justify-items: center; padding: 6px 0 18px; }
-.time-ring { --ring: conic-gradient(var(--open) 0 100%); display: grid; place-items: center; width: min(340px, 82vw); aspect-ratio: 1; border-radius: 50%; background: var(--ring); position: relative; }
+.time-ring { --ring: conic-gradient(var(--open) 0 100%); display: grid; place-items: center; width: min(340px, 82vw); aspect-ratio: 1; border-radius: 50%; background: var(--ring); position: relative; cursor: pointer; }
 .time-ring::before { content: ""; position: absolute; inset: 20%; border-radius: 50%; background: var(--page); }
 .time-ring.overbooked { box-shadow: 0 0 0 7px rgba(181,58,66,0.12); }
 .ring-center { z-index: 1; display: grid; justify-items: center; gap: 4px; width: 56%; text-align: center; }
@@ -50,12 +50,26 @@ main { display: grid; gap: 18px; margin-top: 28px; }
 .ring-center strong { color: var(--blue); font-size: clamp(1.7rem, 7vw, 2.5rem); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }
 .time-ring.overbooked .ring-center strong { color: var(--red); }
 .ring-center small { min-height: 2.4em; color: var(--muted); font-size: 0.74rem; line-height: 1.25; }
+.ring-details { position: absolute; z-index: 3; inset: 8%; overflow: auto; padding: 18px; border: 1px solid #d9deea; border-radius: 22px; color: var(--ink); background: rgba(255,255,255,0.98); box-shadow: 0 16px 38px rgba(31,39,65,0.2); text-align: left; cursor: default; }
+.ring-details[hidden] { display: none; }
+.ring-details > strong { display: block; margin-bottom: 9px; font-size: 0.9rem; }
+.ring-detail-summary { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0 0 11px; font-size: 0.72rem; }
+.ring-detail-summary dt { color: var(--muted); }
+.ring-detail-summary dd { margin: 0; font-weight: 750; font-variant-numeric: tabular-nums; }
+.ring-detail-group { padding-top: 9px; border-top: 1px solid #e6e9ef; }
+.ring-detail-group + .ring-detail-group { margin-top: 9px; }
+.ring-detail-group > span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.7rem; font-weight: 750; }
+.ring-detail-group ul { display: grid; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 0.72rem; }
+.ring-detail-group li { display: flex; justify-content: space-between; gap: 8px; }
+.ring-detail-group li span { overflow-wrap: anywhere; }
+.ring-detail-group li strong { flex: 0 0 auto; font-size: inherit; }
 .window { margin: 24px 0 0; color: var(--muted); text-align: center; font-size: 0.88rem; }
 .ring-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 18px; margin-top: 12px; color: var(--muted); font-size: 0.76rem; }
 .ring-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--open); }
 .dot.work { background: var(--task); }
 .dot.protected { background: var(--protected); }
+.ring-hint { margin: 9px 0 0; color: var(--muted); font-size: 0.7rem; }
 
 .content-section, .actions, .utility-panel { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
@@ -117,6 +131,7 @@ pre { max-height: 380px; overflow: auto; margin: 18px 0 0; padding: 14px; border
 @media (max-width: 620px) {
   .app-shell { width: min(100% - 20px, 520px); padding-top: 18px; }
   .time-ring { width: min(300px, 86vw); }
+  .ring-details { inset: 5%; padding: 15px; }
   .content-section, .actions, .utility-panel { padding: 18px; border-radius: 16px; }
   .actions, .notice { align-items: stretch; flex-direction: column; }
   .settings-layout, .field-pair { grid-template-columns: 1fr; }

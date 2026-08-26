@@ -8,7 +8,7 @@ Plan with TimeBudget is a lightweight, standalone way to experience capacity-fir
 
 The Skill turns a concrete daily window into a visual time budget. It collects task estimates, protects explicit meals and breaks, shows available or overbooked time, and helps re-plan when reality changes. Reported actual time always stays separate from estimates.
 
-After activation it creates both a portable JSON plan and a self-contained interactive HTML page. The model supplies only a small plan draft; a bundled script expands it and injects it into the fixed HTML assets. The page can be opened directly from disk to check off work, add an optional actual duration, see available time, manage reusable defaults, and export an updated plan.
+After activation it creates both a portable JSON plan and a self-contained interactive HTML page. The model supplies only a small plan draft; a bundled script expands it and injects it into the fixed HTML assets. The page can be opened directly from disk to check off work, add an optional actual duration, hover or focus the time ring for task-level details, manage reusable defaults, and export an updated plan.
 
 ## Example output
 

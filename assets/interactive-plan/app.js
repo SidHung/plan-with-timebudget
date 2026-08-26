@@ -17,6 +17,7 @@
   let plan = clone(embeddedPlan);
   let defaults = clone(embeddedDefaults);
   let conflictCopy = null;
+  let ringDetailsPinned = false;
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -347,6 +348,33 @@
     }
   }
 
+  function detailItem(title, minutes) {
+    const item = element("li", "");
+    item.append(element("span", "", title), element("strong", "", formatDuration(minutes)));
+    return item;
+  }
+
+  function renderRingDetails(snapshot, elapsed, raw) {
+    document.getElementById("ring-elapsed").textContent = elapsed === null ? "—" : formatDuration(elapsed);
+    document.getElementById("ring-available").textContent = raw === null ? "—" : raw < 0 ? `Over by ${formatDuration(raw)}` : formatDuration(raw);
+
+    const activeTasks = plan.tasks.filter((task) => ["planned", "in_progress"].includes(task.status));
+    const taskItems = activeTasks.map((task) => detailItem(task.title, task.remaining_estimate_minutes));
+    if (!taskItems.length) taskItems.push(element("li", "", "No unfinished tasks"));
+    replaceChildren(document.getElementById("ring-task-details"), taskItems);
+
+    const activeReserves = plan.reserves.filter((reserve) => ["planned", "in_progress"].includes(reserve.status));
+    const reserveItems = activeReserves.map((reserve) => detailItem(reserve.title, reserve.remaining_minutes));
+    if (!reserveItems.length) reserveItems.push(element("li", "", "No protected time remaining"));
+    replaceChildren(document.getElementById("ring-reserve-details"), reserveItems);
+  }
+
+  function setRingDetailsOpen(open) {
+    const ring = document.getElementById("time-ring");
+    document.getElementById("ring-details").hidden = !open;
+    ring.setAttribute("aria-expanded", String(open));
+  }
+
   function renderOverview() {
     const snapshot = plan.snapshot;
     const ring = document.getElementById("time-ring");
@@ -362,7 +390,8 @@
       value.textContent = plan.plan.lifecycle_status === "closed" ? "Finished" : "Update needed";
       detail.textContent = plan.plan.lifecycle_status === "closed" ? "This plan is closed" : "Review elapsed protected time";
       ring.style.setProperty("--ring", "conic-gradient(var(--elapsed) 0 100%)");
-      ring.setAttribute("aria-label", `${value.textContent}. ${detail.textContent}.`);
+      ring.setAttribute("aria-label", `${value.textContent}. ${detail.textContent}. Open for time details.`);
+      renderRingDetails(snapshot, null, raw);
       return;
     }
 
@@ -391,7 +420,8 @@
     const protectedEnd = workEnd + (protectedMinutes / total) * 100;
     const openEnd = protectedEnd + (open / total) * 100;
     ring.style.setProperty("--ring", `conic-gradient(var(--elapsed) 0 ${elapsedEnd}%, var(--task) ${elapsedEnd}% ${workEnd}%, var(--protected) ${workEnd}% ${protectedEnd}%, var(--open) ${protectedEnd}% ${openEnd}%, var(--elapsed) ${openEnd}% 100%)`);
-    ring.setAttribute("aria-label", `${label.textContent}: ${value.textContent}. Tasks ${formatDuration(snapshot.unfinished_estimated_minutes)}, protected time ${formatDuration(snapshot.pending_reserve_minutes)}.`);
+    ring.setAttribute("aria-label", `${label.textContent}: ${value.textContent}. Tasks ${formatDuration(snapshot.unfinished_estimated_minutes)}, protected time ${formatDuration(snapshot.pending_reserve_minutes)}. Open for details.`);
+    renderRingDetails(snapshot, elapsed, raw);
   }
 
   function taskMeta(task) {
@@ -598,6 +628,25 @@
 
   document.getElementById("save-timezone").addEventListener("change", (event) => {
     document.getElementById("default-timezone").disabled = !event.target.checked;
+  });
+  const timeRing = document.getElementById("time-ring");
+  timeRing.addEventListener("mouseenter", () => setRingDetailsOpen(true));
+  timeRing.addEventListener("mouseleave", () => { if (!ringDetailsPinned) setRingDetailsOpen(false); });
+  timeRing.addEventListener("focus", () => setRingDetailsOpen(true));
+  timeRing.addEventListener("blur", () => { if (!ringDetailsPinned) setRingDetailsOpen(false); });
+  timeRing.addEventListener("click", () => {
+    ringDetailsPinned = !ringDetailsPinned;
+    setRingDetailsOpen(ringDetailsPinned);
+  });
+  timeRing.addEventListener("keydown", (event) => {
+    if (["Enter", " "].includes(event.key)) {
+      event.preventDefault();
+      ringDetailsPinned = !ringDetailsPinned;
+      setRingDetailsOpen(ringDetailsPinned);
+    } else if (event.key === "Escape") {
+      ringDetailsPinned = false;
+      setRingDetailsOpen(false);
+    }
   });
   document.getElementById("export-defaults").addEventListener("click", () => {
     try {
